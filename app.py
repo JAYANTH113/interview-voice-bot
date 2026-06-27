@@ -53,7 +53,7 @@ if audio:
         }
         
         # Use Gemini 1.5 Flash - it processes raw voice natively for free!
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
         
         # Send the audio along with instructions
         response = model.generate_content([
