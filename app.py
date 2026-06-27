@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
 import google.generativeai as genai
-from openai import OpenAI  # Kept purely for free local browser speech elements if needed
+# Kept purely for free local browser speech elements if needed
 
 st.set_page_config(page_title="AI Voice Assistant", page_icon="🎤", layout="centered")
 
