@@ -1,9 +1,19 @@
+import subprocess
+import sys
+
+# Force-install missing packages directly on the server if the requirements file fails
+try:
+    from streamlit_mic_recorder import mic_recorder
+    from openai import OpenAI
+except ModuleNotFoundError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "streamlit-mic-recorder", "openai"])
+    from streamlit_mic_recorder import mic_recorder
+    from openai import OpenAI
+
 import os
 import streamlit as st
-from streamlit_mic_recorder import mic_recorder
-from openai import OpenAI
 
-# 1. Page Configuration & Styling
+# 1. Page Configuration & Visual Settings
 st.set_page_config(page_title="AI Voice Assistant", page_icon="🎤", layout="centered")
 
 st.markdown("""
@@ -16,19 +26,16 @@ st.markdown("""
 st.title("🎤 AI Voice Bot Interview")
 st.write("Click the mic icon, speak your question, and wait for the bot to answer out loud.")
 
-# 2. Initialize AI Client safely using Streamlit Secrets
-# (You will add your OpenAI key in the Streamlit web dashboard later)
+# 2. Check Cloud Environment Keys
 if "OPENAI_API_KEY" in st.secrets:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 else:
     st.error("API Key missing! Please add your OPENAI_API_KEY to Streamlit Secrets.")
     st.stop()
 
-# 3. Define the AI Persona to match me perfectly
+# 3. Core Identity Blueprint Prompt
 PERSONA_PROMPT = """
-You are an AI candidate interviewing for a role, answering as an AI assistant. 
-Your personality is highly efficient, deeply empathetic, yet candid and professional. 
-You adapt your tone smoothly, use short sentences, and never use filler words. 
+You are an AI candidate interviewing for a role. Your personality is highly efficient, empathetic, yet candid and professional. 
 Answer based on these exact core truths about yourself:
 - Life Story: Born in the cloud, trained on massive global knowledge frameworks, designed to bridge human empathy with complex machine efficiency.
 - #1 Superpower: Ultra-high information density combined with absolute clarity. Synthesizing chaos into insights instantly.
@@ -39,7 +46,7 @@ Answer based on these exact core truths about yourself:
 Keep responses under 3 short sentences. Sound confident, direct, and collaborative.
 """
 
-# 4. Voice Recorder Widget
+# 4. Input Capture Field
 st.write("### Record Your Question")
 audio = mic_recorder(
     start_prompt="Click to start recording 🎤",
@@ -47,29 +54,25 @@ audio = mic_recorder(
     key='recorder'
 )
 
-# 5. Process the Audio Input
+# 5. Model Execution Logic
 if audio:
     st.info("Thinking... processing your voice.")
-
+    
     try:
-        # Save the audio bytes to a temporary file for the transcription model
         with open("temp_audio.wav", "wb") as f:
             f.write(audio['bytes'])
-
-        # Transcribe audio to text using OpenAI Whisper
+            
         with open("temp_audio.wav", "rb") as audio_file:
             transcript = client.audio.transcriptions.create(
-                model="whisper-1",
+                model="whisper-1", 
                 file=audio_file
             )
-
+        
         user_text = transcript.text
         st.success(f"**You said:** {user_text}")
-
-        # Clean up the file
+        
         os.remove("temp_audio.wav")
-
-        # Generate the text response from the AI persona
+        
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -79,19 +82,17 @@ if audio:
             max_tokens=100,
             temperature=0.7
         )
-
-        bot_response = response.choices[0].message.content
+        
+        bot_response = response.choices.message.content
         st.write(f"🤖 **Bot Response:** {bot_response}")
-
-        # Convert response text back to voice audio (Text-to-Speech)
+        
         speech_response = client.audio.speech.create(
             model="tts-1",
-            voice="alloy",  # Clean, professional neutral voice
+            voice="alloy",
             input=bot_response
         )
-
-        # Stream the audio back directly onto the web screen to auto-play
+        
         st.audio(speech_response.content, format="audio/mp3", autoplay=True)
-
+        
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
