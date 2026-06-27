@@ -49,8 +49,8 @@ if audio:
     
     try:
         # Use the universally stable gemini-pro model architecture
-        model = genai.GenerativeModel("gemini-pro")
-        
+        model = genai.GenerativeModel("gemini-2.5-flash")
+  
         # Craft a comprehensive prompt merging the user query context
         full_query = f"{PERSONA_PROMPT}\n\nAn interviewer just asked you this question out loud. Give your response: Please provide a natural interview response."
         
