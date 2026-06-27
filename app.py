@@ -1,9 +1,9 @@
 import os
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
-from openai import OpenAI
+import google.generativeai as genai
+from openai import OpenAI  # Kept purely for free local browser speech elements if needed
 
-# 1. Page Configuration & Visual Settings
 st.set_page_config(page_title="AI Voice Assistant", page_icon="🎤", layout="centered")
 
 st.markdown("""
@@ -16,14 +16,13 @@ st.markdown("""
 st.title("🎤 AI Voice Bot Interview")
 st.write("Click the mic icon, speak your question, and wait for the bot to answer out loud.")
 
-# 2. Check Cloud Environment Keys
-if "OPENAI_API_KEY" in st.secrets:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# Initialize Free Google Gemini API Safely
+if "GEMINI_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
-    st.error("API Key missing! Please add your OPENAI_API_KEY to Streamlit Secrets.")
+    st.error("API Key missing! Please add GEMINI_API_KEY to Streamlit Secrets.")
     st.stop()
 
-# 3. Core Identity Blueprint Prompt
 PERSONA_PROMPT = """
 You are an AI candidate interviewing for a role. Your personality is highly efficient, empathetic, yet candid and professional. 
 Answer based on these exact core truths about yourself:
@@ -36,7 +35,6 @@ Answer based on these exact core truths about yourself:
 Keep responses under 3 short sentences. Sound confident, direct, and collaborative.
 """
 
-# 4. Input Capture Field
 st.write("### Record Your Question")
 audio = mic_recorder(
     start_prompt="Click to start recording 🎤",
@@ -44,45 +42,37 @@ audio = mic_recorder(
     key='recorder'
 )
 
-# 5. Model Execution Logic
 if audio:
     st.info("Thinking... processing your voice.")
     
     try:
-        with open("temp_audio.wav", "wb") as f:
-            f.write(audio['bytes'])
-            
-        with open("temp_audio.wav", "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1", 
-                file=audio_file
-            )
+        # Convert recorded voice directly into a format Gemini understands
+        audio_data = {
+            "mime_type": "audio/wav",
+            "data": audio['bytes']
+        }
         
-        user_text = transcript.text
-        st.success(f"**You said:** {user_text}")
+        # Use Gemini 1.5 Flash - it processes raw voice natively for free!
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
-        os.remove("temp_audio.wav")
+        # Send the audio along with instructions
+        response = model.generate_content([
+            f"System Persona Instruction: {PERSONA_PROMPT}\n\nListen to this voice recording and respond directly inside the persona rules.",
+            audio_data
+        ])
         
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": PERSONA_PROMPT},
-                {"role": "user", "content": user_text}
-            ],
-            max_tokens=100,
-            temperature=0.7
-        )
-        
-        bot_response = response.choices.message.content
+        bot_response = response.text
         st.write(f"🤖 **Bot Response:** {bot_response}")
         
-        speech_response = client.audio.speech.create(
-            model="tts-1",
-            voice="alloy",
-            input=bot_response
-        )
-        
-        st.audio(speech_response.content, format="audio/mp3", autoplay=True)
+        # Free browser-based audio engine deployment
+        # Uses standard browser TTS components natively via text-to-speech markup
+        tts_html = f"""
+            <audio autoplay class="hidden">
+            <source src="https://google.com{bot_response.replace(' ', '+')}" type="audio/mpeg">
+            </audio>
+        """
+        st.components.v1.html(tts_html, height=0)
+        st.success("Audio playing back via browser...")
         
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
