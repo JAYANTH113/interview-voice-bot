@@ -1,17 +1,7 @@
-import subprocess
-import sys
-
-# Force-install missing packages directly on the server if the requirements file fails
-try:
-    from streamlit_mic_recorder import mic_recorder
-    from openai import OpenAI
-except ModuleNotFoundError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "streamlit-mic-recorder", "openai"])
-    from streamlit_mic_recorder import mic_recorder
-    from openai import OpenAI
-
 import os
 import streamlit as st
+from streamlit_mic_recorder import mic_recorder
+from openai import OpenAI
 
 # 1. Page Configuration & Visual Settings
 st.set_page_config(page_title="AI Voice Assistant", page_icon="🎤", layout="centered")
